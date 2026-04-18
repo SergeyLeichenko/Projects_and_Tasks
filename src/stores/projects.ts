@@ -24,5 +24,11 @@ export const useProjectsStore = defineStore('projects', {
 
       await api.post('/projects', obj)
     },
+
+    async updateProject(projectId: number | string, quantity: number) {
+      await api.patch(`/projects/${projectId}`, {
+        quantity: quantity,
+      })
+    },
   },
 })

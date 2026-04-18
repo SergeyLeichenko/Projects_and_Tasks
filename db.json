@@ -1,24 +1,10 @@
 {
   "projects": [
     {
-      "id": "1",
-      "name": "First Project",
-      "status": "done",
-      "quantity": 3,
-      "createdAt": "10.02.2025"
-    },
-    {
-      "id": "2",
-      "name": "Second Project",
-      "status": "in_progress",
-      "quantity": 5,
-      "createdAt": "14.03.2024"
-    },
-    {
       "name": "test",
       "description": "",
       "status": "todo",
-      "quantity": 0,
+      "quantity": 3,
       "createdAt": "2026-04-16T09:17:01.873Z",
       "id": "gDCVkOpy1ig"
     },
@@ -26,7 +12,7 @@
       "name": "test 2",
       "description": "",
       "status": "todo",
-      "quantity": 0,
+      "quantity": 1,
       "createdAt": "2026-04-16T10:07:35.563Z",
       "id": "9X-AjPsyQEk"
     }
@@ -63,6 +49,38 @@
       "deadline": "1 day",
       "projectId": "gDCVkOpy1ig",
       "id": "8wZ6su2ArBQ"
+    },
+    {
+      "name": "3",
+      "performer": "A.Johnson",
+      "status": "in_progress",
+      "deadline": "reg",
+      "projectId": "1",
+      "id": "M1K25oxPA9w"
+    },
+    {
+      "name": "dfv",
+      "performer": "A.Johnson",
+      "status": "todo",
+      "deadline": "fd",
+      "projectId": "1",
+      "id": "ktZLM8XU65w"
+    },
+    {
+      "name": "fsdf",
+      "performer": "A.Johnson",
+      "status": "in_progress",
+      "deadline": "1",
+      "projectId": "gDCVkOpy1ig",
+      "id": "ocKC__Pkm40"
+    },
+    {
+      "name": "First",
+      "performer": "J.Smith",
+      "status": "todo",
+      "deadline": "12",
+      "projectId": "9X-AjPsyQEk",
+      "id": "BL1Lf2mKh_0"
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

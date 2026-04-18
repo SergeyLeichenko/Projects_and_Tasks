@@ -34,7 +34,7 @@
       <Kanban v-if="tabs === 'kanban'" />
     </div>
 
-    <ModalWrapper v-model:visible="visible" :title="'Add project'">
+    <ModalWrapper v-model:visible="visible" :title="'Add task'">
       <AddTaskModal @create="create" @close="closeModal" />
     </ModalWrapper>
   </div>
@@ -56,10 +56,12 @@ import { useRoute } from 'vue-router'
 // Types
 import type { ColumnT } from '@/types/table'
 import type { FormT, Task } from '@/types/tasks'
+import { useProjectsStore } from "@/stores/projects"
 
 const route = useRoute()
 
 const { fetchTasks, createTask } = useTasksStore()
+const { updateProject } = useProjectsStore()
 const { tasks } = storeToRefs(useTasksStore())
 
 // Data
@@ -92,10 +94,17 @@ async function create(data: FormT) {
   try {
     await createTask(task)
     await fetchTasks(id)
+    await updateQuantityTaskInProject(task.projectId)
     closeModal()
   } catch (error) {
     console.error(error)
   }
+}
+
+async function updateQuantityTaskInProject(projectId: number | string) {
+  const quantity = tasks.value?.length ? tasks.value?.length : 0
+
+  await updateProject(projectId, quantity)
 }
 
 function viewTask(view: string) {
