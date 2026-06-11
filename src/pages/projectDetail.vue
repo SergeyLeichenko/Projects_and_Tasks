@@ -94,7 +94,9 @@ async function create(data: FormT) {
   try {
     await createTask(task)
     await fetchTasks(id)
-    await updateQuantityTaskInProject(task.projectId)
+
+    if (tabs.value === "kanban") await updateQuantityTaskInProject(task.projectId)
+    
     closeModal()
   } catch (error) {
     console.error(error)
