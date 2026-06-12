@@ -1,22 +1,40 @@
 <template>
   <div class="fields">
     <div class="fields__item">
-      <label for="projectname" :class="['font-semibold w-24', { 'required-text': required }]"
-        >Project name</label
-      >
+      <label for="projectname" class="font-semibold w-24">Назва проекту</label>
       <div class="field">
         <InputText
-          v-model="formData.name"
+          v-model.trim="formData.name"
           id="projectname"
-          :class="['flex-auto', { invalid: required }]"
+          :class="['flex-auto', { error: v$.name.$error }]"
           autocomplete="off"
+          @blur="v$.name.$touch()"
         />
-        <small v-if="required" class="required-text">Project name is required.</small>
+        <div v-for="error in v$.name.$errors" :key="error.$uid" class="input-errors">
+          <div class="error-msg">
+            {{ error.$message }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="project" class="fields__item">
+      <label for="status" class="font-semibold w-24">Статус</label>
+      <div class="field">
+        <Dropdown
+          v-model="formData.status"
+          :options="statuses"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Виберіть статус"
+          class="flex-auto w-full md:w-56"
+          showClear
+        />
       </div>
     </div>
 
     <div class="fields__item">
-      <label for="desc" class="font-semibold w-24">Descriptions</label>
+      <label for="desc" class="font-semibold w-24">Опис проекту</label>
       <Textarea v-model="formData.description" autoResize rows="5" cols="30" />
     </div>
   </div>
@@ -28,17 +46,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { reactive, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
+import Dropdown from 'primevue/dropdown'
+
+import useVuelidate from '@vuelidate/core'
+import { required, helpers, minLength, maxLength } from '@vuelidate/validators'
+
+// Types
+import type { CreateProject, Project } from '@/types/projects'
+import type { Status } from '@/types/table'
+
+// Props
+const props = defineProps<{
+  project?: Project | null
+}>()
 
 // Data
-const formData = reactive({
+const formData = reactive<CreateProject>({
   name: '',
+  status: null,
   description: '',
 })
-const required = ref<boolean>(false)
+const statuses = reactive<Status[]>([
+  { label: 'Active', value: 'active' },
+  { label: 'Archived', value: 'archived' },
+])
+// Validation rules
+const rules = {
+  name: {
+    required: helpers.withMessage('Назва проекту є обов’язковою', required),
+    minLength: helpers.withMessage(
+      'Назва проекту повинна містити щонайменше 2 символи',
+      minLength(2),
+    ),
+    maxLength: helpers.withMessage(
+      'Назва проекту не може перевищувати 100 символів',
+      maxLength(100),
+    ),
+  },
+}
+
+const v$ = useVuelidate(rules, formData)
 
 // Emits
 const emit = defineEmits<{
@@ -46,19 +97,30 @@ const emit = defineEmits<{
   (e: 'close', value: boolean): void
 }>()
 
-// Watcher
-watch(formData, (val) => {
-  if(val.name !== '') {
-    required.value = false
-  }
-})
+//Watch
+watch(
+  () => props.project,
+  (project) => {
+    if (project) {
+      Object.assign(formData, project)
+    } else {
+      Object.assign(formData, {
+        name: '',
+        description: '',
+      })
+    }
+  },
+  { immediate: true },
+)
 
 // Methods
-function create() {
-  if (!formData.name) {
-    required.value = true
+async function create() {
+  const isValid = await v$.value.$validate()
+
+  if (!isValid) {
     return
   }
+
   emit('create', { ...formData })
 }
 
@@ -83,12 +145,6 @@ function close() {
       display: flex;
       flex-direction: column;
     }
-    .required-text {
-      color: red;
-    }
-    .invalid {
-      border: 1px solid red;
-    }
   }
 }
 
@@ -97,5 +153,15 @@ function close() {
   gap: 12px;
   display: flex;
   justify-content: end;
+}
+
+.error {
+  border: 1px solid red;
+}
+
+.error-msg {
+  color: red;
+  font-size: 12px;
+  margin-top: 4px;
 }
 </style>

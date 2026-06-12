@@ -30,12 +30,22 @@
     </div>
 
     <div class="projects__table">
-      <Table v-if="tabs === 'table'" :data="tasks" :title="'Tasks'" :column="columns" />
-      <Kanban v-if="tabs === 'kanban'" />
+      <Table
+        v-if="tabs === 'table'"
+        :data="tasks"
+        :title="'Tasks'"
+        :column="columns"
+        @edit="edit"
+        @delete="remove"
+      />
+      <Kanban v-if="tabs === 'kanban'" @edit="edit" @delete="remove" />
     </div>
 
-    <ModalWrapper v-model:visible="visible" :title="'Add task'">
-      <AddTaskModal @create="create" @close="closeModal" />
+    <ModalWrapper
+      v-model:visible="visible"
+      :title="editingTask ? 'Редагувати завдання' : 'Створити завдання'"
+    >
+      <AddTaskModal :task="editingTask" @create="saveTask" @close="closeModal" />
     </ModalWrapper>
   </div>
 </template>
@@ -56,47 +66,56 @@ import { useRoute } from 'vue-router'
 // Types
 import type { ColumnT } from '@/types/table'
 import type { FormT, Task } from '@/types/tasks'
-import { useProjectsStore } from "@/stores/projects"
+import type { BaseTableData } from '@/types/table'
+import { useProjectsStore } from '@/stores/projects'
 
 const route = useRoute()
 
-const { fetchTasks, createTask } = useTasksStore()
+const { fetchTasks, createTask, editTask, deleteTask } = useTasksStore()
 const { updateProject } = useProjectsStore()
 const { tasks } = storeToRefs(useTasksStore())
 
 // Data
 const columns = ref<ColumnT[]>([
-  { field: 'id', header: 'ID task', sort: false, width: '50px' },
-  { field: 'name', header: 'Task name', sort: false, search: false },
-  { field: 'performer', header: 'Performer', sort: false },
-  { field: 'status', header: 'Status', sort: false },
-  { field: 'deadline', header: 'Deadline', sort: true },
+  { field: 'id', header: 'ID завдання', sort: false, width: '50px' },
+  { field: 'name', header: 'Назва завдання', sort: false, search: false },
+  { field: 'performer', header: 'Виконавець', sort: false },
+  { field: 'status', header: 'Статус', sort: true },
+  { field: 'deadline', header: 'Термін виконання', sort: true },
+  { field: 'action', header: 'Дії', sort: false },
 ])
 const visible = ref<boolean>(false)
 const id = route.params.id as string
 const tabs = ref('table')
+const editingTask = ref<Task | null>(null)
 
 // Methods
 function addTask() {
+  editingTask.value = null
   visible.value = true
 }
 
 function closeModal() {
   visible.value = false
+  editingTask.value = null
 }
 
-async function create(data: FormT) {
-  const task = {
-    ...data,
-    projectId: route.params.id,
-  } as Task
-
+async function saveTask(data: FormT) {
   try {
-    await createTask(task)
-    await fetchTasks(id)
+    if (editingTask.value) {
+      await editTask(String(editingTask.value.id), {
+        ...editingTask.value,
+        ...data,
+        projectId: data.projectName?.id,
+      })
+    } else {
+      const task = { ...data, projectId: route.params.id } as Task
 
-    if (tabs.value === "kanban") await updateQuantityTaskInProject(task.projectId)
-    
+      await createTask(task)
+      await updateQuantityTaskInProject(task.projectId)
+    }
+
+    await fetchTasks(id)
     closeModal()
   } catch (error) {
     console.error(error)
@@ -111,6 +130,18 @@ async function updateQuantityTaskInProject(projectId: number | string) {
 
 function viewTask(view: string) {
   tabs.value = view
+}
+
+async function edit(item: BaseTableData) {
+  const task = item as Task
+
+  editingTask.value = task
+  visible.value = true
+}
+
+async function remove(item: BaseTableData) {
+  await deleteTask(String(item.id))
+  await fetchTasks(id)
 }
 
 // lifecicle hooks

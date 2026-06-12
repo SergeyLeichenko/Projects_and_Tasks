@@ -11,7 +11,7 @@
 
         <draggable v-model="todo" group="tasks" item-key="id" @change="onChange('todo', $event)">
           <template #item="{ element }">
-            <Card :element="element" />
+            <Card :element="element" @edit="editTask" @delete="removeTask" />
           </template>
         </draggable>
       </div>
@@ -27,7 +27,7 @@
           @change="onChange('in_progress', $event)"
         >
           <template #item="{ element }">
-            <Card :element="element" />
+            <Card :element="element" @edit="editTask" @delete="removeTask"/>
           </template>
         </draggable>
       </div>
@@ -38,7 +38,7 @@
 
         <draggable v-model="done" group="tasks" item-key="id" @change="onChange('done', $event)">
           <template #item="{ element }">
-            <Card :element="element" />
+            <Card :element="element" @edit="editTask" @delete="removeTask"/>
           </template>
         </draggable>
       </div>
@@ -60,6 +60,12 @@ import type { Task } from '@/types/tasks'
 const { fetchTasks, updateTask } = useTasksStore()
 const { tasks } = storeToRefs(useTasksStore())
 
+// Emits
+const emit = defineEmits<{
+  (e: 'edit', item: Task): void
+  (e: 'delete', item: Task): void
+}>()
+
 // Data
 const todo = ref<Task[]>([])
 const inProgress = ref<Task[]>([])
@@ -78,7 +84,6 @@ watch(
 
 // Methods
 const onChange = (status: string, event: any) => {
-  console.log('>>', status, event.added)
   if (event.added) {
     const task = event.added.element
 
@@ -86,6 +91,14 @@ const onChange = (status: string, event: any) => {
 
     updateTask(task)
   }
+}
+
+const editTask = (item: Task) => {
+  emit('edit', item)
+}
+
+const removeTask = (item: Task) => {
+  emit('delete', item)
 }
 </script>
 
@@ -97,7 +110,6 @@ const onChange = (status: string, event: any) => {
 
 .column {
   width: 350px;
-  // flex: 1;
   background: #f5f5f5;
   padding: 10px;
   border-radius: 8px;

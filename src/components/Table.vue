@@ -54,12 +54,27 @@
           </div>
         </template>
 
+        <template v-if="col.field === 'quantity'" #body="{ data }">
+          {{ tasksCount(data.id) }}
+        </template>
+
         <template v-if="col.field === 'createdAt'" #body="{ data }">
           {{ formatDate(data.createdAt) }}
         </template>
 
         <template v-if="col.field === 'status'" #body="{ data }">
           <Tag :value="data.status" :severity="getSeverity(data.status)" />
+        </template>
+
+        <template v-if="col.field === 'action'" #body="{ data }">
+          <Button icon="pi pi-pencil" severity="info" rounded text @click.stop="editItem(data)" />
+          <Button
+            icon="pi pi-trash"
+            severity="danger"
+            rounded
+            text
+            @click.stop="deleteItem(data)"
+          />
         </template>
       </Column>
 
@@ -69,79 +84,79 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed  } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
-import { useRouter } from 'vue-router'
+import Button from 'primevue/button'
+import { useRouter, useRoute } from 'vue-router'
+
+import { useTableFilters } from '@/composables/useTableFilters'
+import { useTableReorder } from '@/composables/useTableReorder'
+
+import { useTasksStore } from '@/stores/tasks'
 
 // Types
-import type { ColumnT, FilterT, Status } from '@/types/table'
+import type { ColumnT, Status, BaseTableData } from '@/types/table'
 
 const router = useRouter()
+const route = useRoute()
+const tasksStore = useTasksStore()
 
 // Props
 const props = defineProps<{
-  data: Array<Record<string, unknown>>
+  data: BaseTableData[]
   title: string
   column: ColumnT[]
 }>()
 
 // Data
 const selected = ref<ColumnT>()
-const statuses = ref<Status[]>([
+const statusesTask = reactive<Status[]>([
   { label: 'To Do', value: 'todo' },
   { label: 'In Progress', value: 'in_progress' },
   { label: 'Done', value: 'done' },
 ])
-const filters = ref<FilterT>({
-  name: '',
-  status: null,
-})
+const statusesProject = reactive<Status[]>([
+  { label: 'Active', value: 'active' },
+  { label: 'Archived', value: 'archived' },
+])
 
-// Local state
-const tableData = ref<any[]>([])
-const displayedData = ref<any[]>([])
-
-// Watchers
-watch(
+const { filters, tableData, displayedData, isFilterActive, applyFilters } = useTableFilters(
   () => props.data,
-  (val) => {
-    tableData.value = [...val]
-  },
-  { immediate: true }
 )
 
-watch([tableData, filters], applyFilters, { deep: true, immediate: true })
+const { onRowReorder } = useTableReorder(tableData, applyFilters)
 
 // Computed
-const isFilterActive = computed(() => {
-  return !!filters.value.name?.trim() || !!filters.value.status
+const statuses = computed(() => {
+  return (props.data.find((t) => t.tableName === 'projectTable') ?? route.fullPath === '/')
+    ? statusesProject
+    : statusesTask
 })
 
-// Methods
-function applyFilters() {
-  displayedData.value = tableData.value.filter((item) => {
-    const search = filters.value.name?.trim().toLowerCase()
-
-    const nameMatch =
-      !search ||
-      String(item.name).toLowerCase().includes(search)
-
-    const statusMatch =
-      !filters.value.status || item.status === filters.value.status
-
-    return nameMatch && statusMatch
-  })
+const tasksCount = (projectId: string | number) => {
+  return tasksStore.tasks.filter(
+    task => task.projectId === projectId
+  ).length
 }
 
+// Emits
+const emit = defineEmits<{
+  (e: 'edit', item: BaseTableData): void
+  (e: 'delete', item: BaseTableData): void
+}>()
+
+// Methods
 const getSeverity = (status: string) => {
   switch (status) {
     case 'done':
+    case 'active':
       return 'success'
     case 'in_progress':
+    case 'archived':
       return 'warn'
     case 'todo':
       return 'info'
@@ -161,13 +176,13 @@ const onRowClick = (event: any) => {
   })
 }
 
-const onRowReorder = (event: any) => {
-  tableData.value = event.value
-  applyFilters()
+const editItem = (item: BaseTableData) => {
+  emit('edit', item)
 }
 
-//Lifecicle hooks
-onMounted(async () => {})
+const deleteItem = (item: BaseTableData) => {
+  emit('delete', item)
+}
 </script>
 
 <style scoped lang="scss">

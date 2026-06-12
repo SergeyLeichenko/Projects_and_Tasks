@@ -1,24 +1,46 @@
 <template>
   <div class="fields">
     <div class="fields__item">
-      <label for="taskname" :class="['font-semibold w-24', { 'required-text': errors.name }]"
-        >Task name</label
-      >
+      <label for="taskname" class="font-semibold w-24">Назва завдання</label>
       <div class="field">
         <InputText
-          v-model="formData.name"
+          v-model.trim="formData.name"
           id="taskname"
-          :class="{ invalid: errors.name }"
+          :class="{ error: v$.name.$error }"
           autocomplete="off"
+          @blur="v$.name.$touch()"
         />
-        <small v-if="errors.name" class="required-text">Task name is required.</small>
+        <div v-for="error in v$.name.$errors" :key="error.$uid" class="input-errors">
+          <div class="error-msg">
+            {{ error.$message }}
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="fields__item">
-      <label for="performer" :class="['font-semibold w-24', { 'required-text': errors.performer }]"
-        >Performer</label
-      >
+      <label for="projectname" class="font-semibold w-24">Назва проекту</label>
+      <div class="field">
+        <Dropdown
+          v-model="formData.projectName"
+          :options="projectsList"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Виберіть проект"
+          class="flex-auto w-full md:w-56"
+          :class="{ error: v$.projectName.$error }"
+          showClear
+        />
+        <div v-for="error in v$.projectName.$errors" :key="error.$uid" class="input-errors">
+          <div class="error-msg">
+            {{ error.$message }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fields__item">
+      <label for="performer" class="font-semibold w-24">Виконавець</label>
       <div class="field">
         <Dropdown
           v-model="formData.performer"
@@ -27,35 +49,49 @@
           optionValue="value"
           placeholder="Select a performers"
           class="flex-auto w-full md:w-56"
-          :class="{ invalid: errors.performer }"
           showClear
         />
-        <small v-if="errors.performer" class="required-text">Performer is required.</small>
       </div>
     </div>
 
     <div class="fields__item">
-      <label for="status" :class="['font-semibold w-24', { 'required-text': errors.status }]"
-        >Status</label
-      >
+      <label for="status" class="font-semibold w-24">Статус</label>
       <div class="field">
         <Dropdown
           v-model="formData.status"
           :options="statuses"
           optionLabel="label"
           optionValue="value"
-          placeholder="Select a status"
+          placeholder="Виберіть статус"
           class="flex-auto w-full md:w-56"
-          :class="{ invalid: errors.status }"
+          :class="{ error: v$.status.$error }"
           showClear
+          @blur="v$.status.$touch()"
         />
-        <small v-if="errors.status" class="required-text">Status is required.</small>
+        <div v-for="error in v$.status.$errors" :key="error.$uid" class="input-errors">
+          <div class="error-msg">
+            {{ error.$message }}
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="fields__item">
-      <label for="deadline" class="font-semibold w-24">Deadline</label>
-      <InputText v-model="formData.deadline" id="deadline" class="flex-auto" autocomplete="off" />
+      <label for="deadline" class="font-semibold w-24">Термін виконання</label>
+
+      <div class="field">
+        <InputText
+          v-model="formData.deadline"
+          type="date"
+          id="deadline"
+          class="flex-auto"
+          :class="{ error: v$.deadline.$error }"
+          @change="v$.deadline.$touch()"
+        />
+        <div v-for="error in v$.deadline.$errors" :key="error.$uid" class="input-errors">
+          <div class="error-msg">{{ error.$message }}</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -66,18 +102,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 
+import useVuelidate from '@vuelidate/core'
+import { required, helpers, minLength, maxLength } from '@vuelidate/validators'
+
+import { useProjectsStore } from '@/stores/projects'
+import { storeToRefs } from 'pinia'
+
 // Types
-import type { Performer, FormT } from '@/types/tasks'
+import type { Performer, FormT, Task } from '@/types/tasks'
 import type { Status } from '@/types/table'
+
+const { fetchProjects } = useProjectsStore()
+const { projects } = storeToRefs(useProjectsStore())
+
+// Props
+const props = defineProps<{
+  task?: Task | null
+}>()
 
 // Data
 const formData = reactive<FormT>({
   name: '',
+  projectName: null,
   performer: null,
   status: null,
   deadline: '',
@@ -94,11 +145,53 @@ const statuses = ref<Status[]>([
   { label: 'Done', value: 'done' },
 ])
 
-const errors = reactive({
-  name: false,
-  performer: false,
-  status: false,
-})
+// Validation rules
+const notFutureDate = helpers.withMessage(
+  'Дата виконання не може бути більшою за поточну дату',
+  (value: string) => {
+    if (!value) return true
+
+    const selectedDate = new Date(`${value}T00:00:00`)
+    const today = new Date()
+
+    today.setHours(0, 0, 0, 0)
+
+    return selectedDate <= today
+  },
+)
+
+const rules = {
+  name: {
+    required: helpers.withMessage('Назва завдання є обов’язковою', required),
+    minLength: helpers.withMessage(
+      'Назва завдання повинна містити щонайменше 3 символи',
+      minLength(3),
+    ),
+    maxLength: helpers.withMessage(
+      'Назва завдання не може перевищувати 120 символів',
+      maxLength(120),
+    ),
+  },
+  projectName: {
+    required: helpers.withMessage('Назва проекту є обов’язковою', required),
+    minLength: helpers.withMessage(
+      'Назва проекту повинна містити щонайменше 2 символи',
+      minLength(2),
+    ),
+    maxLength: helpers.withMessage(
+      'Назва проекту не може перевищувати 100 символів',
+      maxLength(100),
+    ),
+  },
+  status: {
+    required: helpers.withMessage('Поле статус є обов’язковим', required),
+  },
+  deadline: {
+    notFutureDate,
+  },
+}
+
+const v$ = useVuelidate(rules, formData)
 
 // Emits
 const emit = defineEmits<{
@@ -106,29 +199,55 @@ const emit = defineEmits<{
   (e: 'close', value: boolean): void
 }>()
 
-// Watchers
-watch(() => formData.name, () => (errors.name = false))
-watch(() => formData.performer, () => (errors.performer = false))
-watch(() => formData.status, () => (errors.status = false))
+//Watch
+watch(
+  () => props.task,
+  (task) => {
+    if (task) {
+      const project = projects.value.find((p) => p.id === task.projectId)
+
+      Object.assign(formData, { ...task, projectName: project })
+    } else {
+      Object.assign(formData, {
+        name: '',
+        projectName: null,
+        status: null,
+        deadline: '',
+      })
+    }
+  },
+  { immediate: true },
+)
+
+// Computed
+const projectsList = computed(() => {
+  return projects.value.map((project) => ({
+    label: project.name,
+    value: project,
+  }))
+})
 
 // Methods
-function validate() {
-  errors.name = !formData.name
-  errors.performer = !formData.performer
-  errors.status = !formData.status
+async function create() {
+  const isValid = await v$.value.$validate()
 
-  return !errors.name && !errors.performer && !errors.status
-}
+  if (!isValid) {
+    return
+  }
 
-function create() {
-  if (!validate()) return
-
-  emit('create', { ...formData })
+  emit('create', {
+    ...formData,
+  })
 }
 
 function close() {
   emit('close', false)
 }
+
+// lificicle hooks
+onMounted(async () => {
+  if (!projects.value?.length) await fetchProjects()
+})
 </script>
 
 <style scoped lang="scss">
@@ -147,12 +266,6 @@ function close() {
       display: flex;
       flex-direction: column;
     }
-    .required-text {
-      color: red;
-    }
-    .invalid {
-      border: 1px solid red;
-    }
   }
 }
 
@@ -161,5 +274,15 @@ function close() {
   gap: 12px;
   display: flex;
   justify-content: end;
+}
+
+.error {
+  border: 1px solid red;
+}
+
+.error-msg {
+  color: red;
+  font-size: 12px;
+  margin-top: 4px;
 }
 </style>
