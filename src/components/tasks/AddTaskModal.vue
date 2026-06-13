@@ -96,8 +96,8 @@
   </div>
 
   <div class="buttons flex justify-end gap-2">
-    <Button type="button" label="Cancel" severity="secondary" @click="close" />
-    <Button type="button" label="Save" @click="create" />
+    <Button type="button" label="Відмінити" severity="secondary" @click="close" />
+    <Button type="button" label="Зберегти" @click="create" />
   </div>
 </template>
 

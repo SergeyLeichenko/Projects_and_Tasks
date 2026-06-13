@@ -12,7 +12,7 @@
 
       <template #end>
         <div class="block-right">
-          <InputText placeholder="Search" type="text" class="w-32 sm:w-auto" />
+          <InputText placeholder="Пошук" type="text" class="w-32 sm:w-auto" />
           <Avatar
             image="https://primefaces.org/cdn/primevue/images/avatar/amyelsner.png"
             shape="circle"
@@ -38,14 +38,9 @@ type MenuItem = {
 
 const items = ref<MenuItem[]>([
   {
-    label: 'Projects',
+    label: 'Проекти',
     icon: 'pi pi-home',
     route: '/',
-  },
-  {
-    label: 'Tasks',
-    icon: 'pi pi-envelope',
-    route: '/tasks',
   },
 ])
 </script>

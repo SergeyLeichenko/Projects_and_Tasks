@@ -2,7 +2,7 @@
   <div class="projects">
     <div class="projects__filters">
       <Button
-        label="Add Project"
+        label="Додати проект"
         icon="pi pi-plus"
         severity="info"
         rounded
@@ -12,7 +12,7 @@
     </div>
 
     <div class="projects__table">
-      <Table :data="projects" :title="'Projects'" :column="columns" @edit="edit" @delete="remove" />
+      <Table :data="projects" :title="'Проекти'" :column="columns" @edit="edit" @delete="remove" />
     </div>
 
     <ModalWrapper
@@ -32,9 +32,10 @@ import AddProjectModal from '@/components/project/AddProjectModal.vue'
 import Button from 'primevue/button'
 
 import { useProjectsStore } from '@/stores/projects'
-import { useTasksStore } from "@/stores/tasks"
+import { useTasksStore } from '@/stores/tasks'
 import { storeToRefs } from 'pinia'
 import { ref, onMounted } from 'vue'
+import { useAppToast } from '@/composables/useAppToast'
 
 // Types
 import type { ColumnT, BaseTableData } from '@/types/table'
@@ -43,6 +44,8 @@ import type { Project } from '@/types/projects'
 const { fetchProjects, createProject, editProject, deleteProject } = useProjectsStore()
 const { allTasks } = useTasksStore()
 const { projects } = storeToRefs(useProjectsStore())
+
+const { showToast } = useAppToast()
 
 // Data
 const columns = ref<ColumnT[]>([
@@ -78,18 +81,34 @@ async function remove(item: BaseTableData) {
   await deleteProject(String(item.id))
   await fetchProjects()
   await allTasks()
+
+  showToast({
+    severity: 'error',
+    summary: 'Успішно',
+    detail: 'Проект видалено',
+  })
 }
 
 async function saveProject(data: { name: string; description: string }) {
+  let message = ''
+ 
   try {
     if (editingProject.value) {
       await editProject(String(editingProject.value.id), { ...editingProject.value, ...data })
+      message = 'Проект оновлено'
     } else {
       await createProject(data)
+      message = 'Проект створено'
     }
 
     await fetchProjects()
     closeModal()
+
+    showToast({
+      severity: 'success',
+      summary: 'Успішно',
+      detail: message,
+    })
   } catch (error) {
     console.error(error)
   }

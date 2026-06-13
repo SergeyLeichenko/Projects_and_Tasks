@@ -2,7 +2,7 @@
   <div class="projects">
     <div class="projects__filters">
       <Button
-        label="Add Task"
+        label="Додати завдання"
         icon="pi pi-plus"
         severity="info"
         rounded
@@ -13,7 +13,7 @@
 
     <div class="buttons-toggle">
       <Button
-        label="Table"
+        label="Таблиця"
         :class="{ active: tabs === 'table' }"
         class="btn"
         size="small"
@@ -21,7 +21,7 @@
       />
 
       <Button
-        label="Kanban"
+        label="Канбан"
         :class="{ active: tabs === 'kanban' }"
         class="btn"
         size="small"
@@ -29,11 +29,13 @@
       />
     </div>
 
+    <h2 class="title">{{ title?.name }}</h2>
+
     <div class="projects__table">
       <Table
         v-if="tabs === 'table'"
         :data="tasks"
-        :title="'Tasks'"
+        :title="'Завдання'"
         :column="columns"
         @edit="edit"
         @delete="remove"
@@ -60,8 +62,9 @@ import Button from 'primevue/button'
 
 import { useTasksStore } from '@/stores/tasks'
 import { storeToRefs } from 'pinia'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAppToast } from '@/composables/useAppToast'
 
 // Types
 import type { ColumnT } from '@/types/table'
@@ -70,10 +73,12 @@ import type { BaseTableData } from '@/types/table'
 import { useProjectsStore } from '@/stores/projects'
 
 const route = useRoute()
+const { showToast } = useAppToast()
 
 const { fetchTasks, createTask, editTask, deleteTask } = useTasksStore()
-const { updateProject } = useProjectsStore()
+const { updateProject, fetchProjects } = useProjectsStore()
 const { tasks } = storeToRefs(useTasksStore())
+const { projects } = storeToRefs(useProjectsStore())
 
 // Data
 const columns = ref<ColumnT[]>([
@@ -89,6 +94,11 @@ const id = route.params.id as string
 const tabs = ref('table')
 const editingTask = ref<Task | null>(null)
 
+// Computed
+const title = computed(() => {
+  return projects.value.find((p) => p.id === route.params.id)
+})
+
 // Methods
 function addTask() {
   editingTask.value = null
@@ -101,6 +111,8 @@ function closeModal() {
 }
 
 async function saveTask(data: FormT) {
+  let message = ''
+
   try {
     if (editingTask.value) {
       await editTask(String(editingTask.value.id), {
@@ -108,15 +120,23 @@ async function saveTask(data: FormT) {
         ...data,
         projectId: data.projectName?.id,
       })
+      message = 'Завдання оновлено'
     } else {
-      const task = { ...data, projectId: route.params.id } as Task
+      const task = { ...data, projectId: data.projectName?.id } as Task
 
       await createTask(task)
       await updateQuantityTaskInProject(task.projectId)
+      message = 'Завдання створено'
     }
 
     await fetchTasks(id)
     closeModal()
+
+    showToast({
+      severity: 'success',
+      summary: 'Успішно',
+      detail: message,
+    })
   } catch (error) {
     console.error(error)
   }
@@ -142,10 +162,17 @@ async function edit(item: BaseTableData) {
 async function remove(item: BaseTableData) {
   await deleteTask(String(item.id))
   await fetchTasks(id)
+
+  showToast({
+    severity: 'error',
+    summary: 'Успішно',
+    detail: 'Завдання видалено',
+  })
 }
 
 // lifecicle hooks
 onMounted(async () => {
+  if (projects.value.length === 0) await fetchProjects()
   await fetchTasks(id)
 })
 </script>
@@ -165,6 +192,12 @@ onMounted(async () => {
   .active {
     background: #4b4c4e !important;
     color: white !important;
+  }
+
+  .title {
+    display: flex;
+    justify-content: center;
+    color: #4b4c4e;
   }
 }
 </style>

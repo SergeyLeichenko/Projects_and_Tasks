@@ -38,7 +38,7 @@
             <InputText
               v-if="col.field === 'name' && col.search"
               v-model="filters.name"
-              placeholder="Search"
+              placeholder="Пошук"
             />
 
             <!-- status -->
@@ -48,7 +48,7 @@
               :options="statuses"
               optionLabel="label"
               optionValue="value"
-              placeholder="Status"
+              placeholder="Статус"
               showClear
             />
           </div>
@@ -78,7 +78,7 @@
         </template>
       </Column>
 
-      <template #footer> Total: {{ data.length }} </template>
+      <template #footer> Кількість: {{ data.length }} </template>
     </DataTable>
   </div>
 </template>
