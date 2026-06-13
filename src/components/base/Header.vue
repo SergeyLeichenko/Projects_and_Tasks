@@ -38,9 +38,14 @@ type MenuItem = {
 
 const items = ref<MenuItem[]>([
   {
-    label: 'Проекти',
+    label: 'Головна',
     icon: 'pi pi-home',
     route: '/',
+  },
+  {
+    label: 'Проекти',
+    icon: 'pi pi-search',
+    route: '/projects',
   },
 ])
 </script>
